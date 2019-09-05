@@ -14,6 +14,9 @@ A set of Ansible playbooks to make adding and removing KVM virtual machines easy
 
 4. SSH into your shiny new VM!
 
+5. When you're done with your VM just run: `ansible-playbook destroy.yml --extra-vars="hostname=VM_HOSTNAME"`. This will undefine and destroy the VM and remove
+its underlying storage.
+
 ## Configuration
 
 You will need to  make some configuration changes before use. In `vars/settings.yml` set the appropriate directories for cloud-init, ISOs, storage and where your 
