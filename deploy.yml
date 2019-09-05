@@ -1,0 +1,123 @@
+- hosts: localhost
+  vars:
+    OS_IMAGE: CentOS-7-x86_64-GenericCloud-1901.qcow2
+    OS_DISK_PATH: /data/inf/hosts
+    OS_IMAGE_PATH: /data/inf/images
+    CLOUD_INIT_PATH: /data/inf/code/cloud-init
+    ISO_PATH: /data/inf/code/isos
+    INTERFACE_PATH: /data/inf/code/interfaces
+    HOSTNAME: "{{ hostname }}"
+    FULL_HOSTNAME: "{{ full_hostname }}"
+    DISK_SIZE: 10G
+    NETWORK: "inf"
+  vars_files: "{{ var_file }}"
+  gather_facts: no
+  become: yes
+  tasks:
+    - name: Generate a new cloud-init host directory for {{ HOSTNAME }}
+      file:
+        path: "{{ CLOUD_INIT_PATH }}/meta-data/{{ HOSTNAME }}"
+        state: directory
+        owner: root
+        group: root
+        mode: 0755
+
+    - name: Generate a new meta-data file for {{ HOSTNAME }}
+      file:
+        path: "{{ CLOUD_INIT_PATH }}/meta-data/{{ HOSTNAME }}/meta-data"
+        state: touch
+        owner: root
+        group: root
+        mode: 0755
+
+    - name: Add the new instance-id to "{{ CLOUD_INIT_PATH }}/meta-data/{{ HOSTNAME }}/meta-data"
+      lineinfile:
+        path: "{{ CLOUD_INIT_PATH }}/meta-data/{{ HOSTNAME }}/meta-data"
+        line: "instance-id: {{ HOSTNAME }}"
+        state: present
+
+    - name: Add the new hostname to "{{ CLOUD_INIT_PATH }}/meta-data/{{ HOSTNAME }}/meta-data"
+      lineinfile:
+        path: "{{ CLOUD_INIT_PATH }}/meta-data/{{ HOSTNAME }}/meta-data"
+        line: "local-hostname: {{ FULL_HOSTNAME }}"
+        state: present
+        insertafter: "^instance-id:"
+
+    - name: Generate new cloud-init iso for "{{ HOSTNAME }}"
+      command: genisoimage -output "{{ ISO_PATH }}/{{ HOSTNAME }}.iso" -joliet -volid cidata \
+               -r "{{ CLOUD_INIT_PATH }}/meta-data/{{ HOSTNAME }}/meta-data" "{{ CLOUD_INIT_PATH }}/user-data/user-data"
+
+    - name: Instantiate OS disk for {{ HOSTNAME }}
+      copy:
+        src: "{{ OS_IMAGE_PATH }}/{{ OS_IMAGE }}"
+        dest: "{{ OS_DISK_PATH }}/{{ HOSTNAME }}.qcow2"
+        mode: 0644
+        owner: root
+        group: root
+
+    - name: Import {{ HOSTNAME }} VM
+      command: virt-install \
+                  --name {{ HOSTNAME }} \
+                  --vcpus {{ VCPUS }} \
+                  --memory {{ MEMORY }} \
+                  --import \
+                  --disk "{{ OS_DISK_PATH }}/{{ HOSTNAME }}.qcow2",format=qcow2,bus=virtio \
+                  --disk "{{ ISO_PATH }}/{{ HOSTNAME }}.iso",device=cdrom
+                  --network network={{ NETWORK }}
+                  --os-type=linux
+                  --os-variant=rhel7
+                  --noautoconsole
+
+### We don't want to detach the ISO until the VM has fully finished booting
+    - name: Wait for SSH to become available on VM
+      wait_for:
+        timeout: 120
+        host: "{{ HOSTNAME }}"
+        port: 22
+        delay: 10
+
+### Interface Attachments
+
+### Clean up
+    # This does not work
+    #- name: Detach the cloud-init iso
+    #  command: virsh change-media "{{ HOSTNAME }}" hda --eject --config
+
+    - name: Stop cloud-init from ever starting again
+      command: ansible "{{ HOSTNAME }}" -i "{{ HOSTNAME }}", -m systemd -a "name=cloud-init state=stopped enabled=False masked=True" --become
+      become: no
+
+    - name: Remove the cloud-init iso
+      file:
+        path: "{{ ISO_PATH }}/{{ HOSTNAME }}.iso"
+        state: absent
+
+    - name: Remove the "{{ HOSTNAME }}/meta-data"
+      file:
+        path: "{{ CLOUD_INIT_PATH }}/meta-data/{{ HOSTNAME }}/meta-data"
+        state: absent
+
+    - name: Remove the "{{ CLOUD_INIT_PATH }}/meta-data/{{ HOSTNAME }}" directory
+      file:
+        path: "{{ CLOUD_INIT_PATH }}/meta-data/{{ HOSTNAME }}"
+        state: absent
+
+    - name: shutdown {{ HOSTNAME }}
+      command: virsh shutdown {{ HOSTNAME }}
+
+    - name: Wait 5 seconds for VM to shutdown
+      wait_for:
+        timeout: 5
+
+    - name: Remove the CD-ROM from {{ HOSTNAME }}
+      command: virsh detach-disk {{ HOSTNAME }} hda --config
+
+    - name: Start the VM back up
+      command: virsh start {{ HOSTNAME }}
+
+    - name: Wait for SSH to become available
+      wait_for:
+        port: 22
+        state: present
+        timeout: 120
+        delay: 10

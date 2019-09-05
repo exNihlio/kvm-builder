@@ -1,0 +1,17 @@
+- hosts: localhost
+  gather_facts: yes
+  become: yes
+  vars:
+    HOSTNAME: "{{ hostname }}"
+    OS_DISK_PATH: /data/inf/hosts
+  tasks:
+    - name: Destroy VM {{ HOSTNAME }}
+      command: virsh destroy {{ HOSTNAME }}
+   
+    - name: Undefine VM {{ HOSTNAME }}
+      command: virsh undefine {{ HOSTNAME }}
+
+    - name: Remove the underlying storage for {{ HOSTNAME }}
+      file:
+        path: "{{ OS_DISK_PATH }}/{{ HOSTNAME }}.qcow2"
+        state: absent

@@ -1,0 +1,37 @@
+## Examples ##
+# The base image that will be used to create your VM.
+# In this case, this image has ben sourced from the CentOS generic cloud images
+# that are designed to be used with KVM
+# OS_IMAGE: CentOS-7-x86_64-GenericCloud-1901.qcow2
+#
+# Path to where your VM disks will be stored. This should probably be large
+# secondary disk
+# OS_DISK_PATH: /data/inf/hosts
+#
+# Path to the above image listed in OS_IMAGE
+# OS_IMAGE_PATH: /data/inf/images
+# 
+# Location of your cloud-init data. As this uses the cloud-init 'nocloud'
+# option, your cloud-init data will be split into two files: user-data and
+# meta-data. 'meta-data' contains only the hostname and the instance-id. This
+# data is essential ephemeral is dynamically inserted by Ansible. 'user-data' 
+# on the other hand, will contain user accounts, ssh public keys, repos, 
+# post-install commands and the usual expected data in a cloud-init file. At 
+# the base of this directory, there should be two additional directories, 
+# called: 'user-data' and 'meta-data'. Place your cloud-init 'user-data' file 
+# here. Leave the 'meta-data' directory, as everything needed here is
+# generated automatically
+# CLOUD_INIT_PATH: /data/inf/code/cloud-init
+#
+# When the playbook runs, Ansible will create an ISO that contains the
+# cloud-init meta-data and user-data files. While the VM is created and during
+# its first boot, the ISO will remain inserted. After this, Ansible will
+# shutdown and mask cloud-init, shutdown the VM, remove and delete the ISO and
+# then restart your VM.
+# ISO_PATH: /data/inf/code/isos
+
+OS_IMAGE:
+OS_DISK_PATH:
+OS_IMAGE_PATH:
+CLOUD_INIT_PATH:
+ISO_PATH:
