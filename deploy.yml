@@ -1,16 +1,13 @@
 - hosts: localhost
   vars:
-    OS_IMAGE: CentOS-7-x86_64-GenericCloud-1901.qcow2
-    OS_DISK_PATH: /data/inf/hosts
-    OS_IMAGE_PATH: /data/inf/images
-    CLOUD_INIT_PATH: /data/inf/code/cloud-init
-    ISO_PATH: /data/inf/code/isos
-    INTERFACE_PATH: /data/inf/code/interfaces
+    # Name that libvirt will call this VM
     HOSTNAME: "{{ hostname }}"
+    # FQDN that will be logged in dnsmasq
     FULL_HOSTNAME: "{{ full_hostname }}"
-    DISK_SIZE: 10G
-    NETWORK: "inf"
-  vars_files: "{{ var_file }}"
+  vars_files:
+    # Path to your settings file and your VM size file here
+    - "{{ size }}"
+    - "{{ settings }}"
   gather_facts: no
   become: yes
   tasks:
