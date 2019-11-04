@@ -51,6 +51,9 @@
         mode: 0644
         owner: root
         group: root
+    - name: Instantiate the data disk for {{ HOSTNAME }}
+      shell: qemu-img create -f qcow2 -o {{ QEMU_OPTS }} {{ OS_DISK_PATH }}/{{ HOSTNAME }}-data.qcow2 {{ DATA_DISK_SIZE }}
+      when: DATA_DISK == True
 
     - name: Import {{ HOSTNAME }} VM
       command: virt-install \
@@ -72,13 +75,6 @@
         host: "{{ HOSTNAME }}"
         port: 22
         delay: 10
-
-### Interface Attachments
-
-### Clean up
-    # This does not work
-    #- name: Detach the cloud-init iso
-    #  command: virsh change-media "{{ HOSTNAME }}" hda --eject --config
 
     - name: Stop cloud-init from ever starting again
       command: ansible "{{ HOSTNAME }}" -i "{{ HOSTNAME }}", -m systemd -a "name=cloud-init state=stopped enabled=False masked=True" --become
@@ -108,6 +104,10 @@
 
     - name: Remove the CD-ROM from {{ HOSTNAME }}
       command: virsh detach-disk {{ HOSTNAME }} hda --config
+
+    - name: Attach the data disk
+      command: virsh attach-disk {{ HOSTNAME }} {{ OS_DISK_PATH }}/{{ HOSTNAME }}-data.qcow2 vdb --persistent
+      when: DATA_DISK == True
 
     - name: Start the VM back up
       command: virsh start {{ HOSTNAME }}
