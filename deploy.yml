@@ -51,8 +51,9 @@
         mode: 0644
         owner: root
         group: root
+
     - name: Instantiate the data disk for {{ HOSTNAME }}
-      shell: qemu-img create -f qcow2 -o {{ QEMU_OPTS }} {{ OS_DISK_PATH }}/{{ HOSTNAME }}-data.qcow2 {{ DATA_DISK_SIZE }}
+      shell: qemu-img create -f qcow2 -o {{ QEMU_OPTS }} {{ DATA_DISK_PATH }}/{{ HOSTNAME }}-data.qcow2 {{ DATA_DISK_SIZE }}
       when: DATA_DISK == True
 
     - name: Import {{ HOSTNAME }} VM
@@ -106,7 +107,7 @@
       command: virsh detach-disk {{ HOSTNAME }} hda --config
 
     - name: Attach the data disk
-      command: virsh attach-disk {{ HOSTNAME }} {{ OS_DISK_PATH }}/{{ HOSTNAME }}-data.qcow2 vdb --persistent
+      command: virsh attach-disk {{ HOSTNAME }} {{ DATA_DISK_PATH }}/{{ HOSTNAME }}-data.qcow2 vdb --persistent
       when: DATA_DISK == True
 
     - name: Start the VM back up
